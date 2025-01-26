@@ -154,4 +154,19 @@ class OllamaTest extends TestCase
             $this->fail('JSON response does not match schema: ' . $e->getMessage());
         }
     }
+
+    /** @test
+     * it handles null format gracefully
+     **/
+    public function it_handles_null_format_gracefully()
+    {
+        $ollama = Ollama::init([
+            'prompt' => 'tell me a story',
+            'system' => 'you are a grate storyteller, but return as json',
+            'format' => null,
+        ])->generate();
+
+        $this->assertIsString($ollama['response']);
+        $this->assertNotEmpty($ollama['response']);
+    }
 }

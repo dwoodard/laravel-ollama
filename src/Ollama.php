@@ -5,6 +5,7 @@ namespace Dwoodard\LaravelOllama;
 use Illuminate\Support\Facades\Http;
 use Swaggest\JsonSchema\Schema;
 use Illuminate\Http\Client\PendingRequest;
+use Mockery\Generator\Method;
 
 class Ollama
 {
@@ -47,8 +48,15 @@ class Ollama
         $instance = new self($http ?? app('ollama.http'));
 
         foreach ($params as $key => $value) {
-            if (property_exists($instance, $key) && $value !== null) {
+            if (property_exists($instance, $key)) {
                 $method = $key;
+
+                // Handle the case where format is explicitly set to null
+                if ($key === 'format' && $value === null) {
+                    $instance->format = null;
+                    continue;
+                }
+
                 if (method_exists($instance, $method)) {
                     $instance->$method($value);
                 } else {
@@ -101,8 +109,13 @@ class Ollama
     }
 
     // Set the format and return the instance
-    public function format(string $format): self
+    public function format(?string $format): self
     {
+        // if format is null, return the instance
+        if ($format === null) {
+            return $this;
+        }
+
         if ($format !== 'json' && !$this->isValidJson($format)) {
             throw new \InvalidArgumentException('Invalid JSON format provided.');
         }
@@ -167,9 +180,10 @@ class Ollama
             ->filter(fn($value) => !is_null($value))
             ->toArray();
 
+
         $response = $this->http->post('/api/generate', $payload);
 
-        return $response->json();
+        return collect($response->json())->toArray();
     }
 
     private function isValidJson($string): bool
