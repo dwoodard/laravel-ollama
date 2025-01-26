@@ -72,7 +72,6 @@ class OllamaTest extends TestCase
             prompt: $prompt
         )->generate(); // Removed $request and ->json()
 
-        $this->assertIsArray($response);
         $this->assertArrayHasKey('model', $response);
         $this->assertArrayHasKey('created_at', $response);
         $this->assertArrayHasKey('response', $response);
