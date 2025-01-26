@@ -7,98 +7,55 @@ use Swaggest\JsonSchema\Schema;
 
 class Ollama
 {
-    public $model;
+    private string $api_url;
 
-    public $system;
+    public string $model;
 
-    public $prompt;
+    public ?string $system = 'you are a help assistant';
 
-    public $suffix;
+    public ?string $prompt = null;
 
-    public $images;
+    public ?string $suffix = null;
 
-    public $format;
+    public ?array $images = null;
 
-    public $options;
+    public ?string $format = 'json';
 
-    public $template;
+    public bool $stream = false;
 
-    public $stream;
+    public ?array $options = null;
 
-    public $raw;
+    public ?string $template = null;
 
-    public $keep_alive;
+    public ?bool $raw = null;
 
-    public $context;
+    public ?int $keep_alive = null;
+
+    public ?string $context = null;
 
     public function __construct()
     {
         $this->api_url = config('laravel-ollama.api_url', 'http://localhost:11434');
         $this->model = env('OLLAMA_MODEL', 'llama3.2:latest');
-        $this->system = 'you are a help assistant';
-        $this->prompt = null;
-        $this->format = 'json';
-        $this->stream = 'false';
-        $this->raw = null;
-        $this->keep_alive = null;
-        $this->context = null;
-        $this->options = null;
-        $this->template = null;
-        $this->images = null;
-        $this->suffix = null;
     }
 
-    // Initialize and return a new instance
-    public static function init(
-        $model = null,
-        $prompt = '',
-        $format = null,
-        $stream = false,
-        $suffix = null,
-        $images = null,
-        $options = null,
-        $system = null,
-        $template = null,
-        $raw = null,
-        $keep_alive = null,
-        $context = null
-    ) {
-        $ollama = new self;
+    // Initialize and return a new instance with dynamic parameters
+    public static function init(array $params = []): self
+    {
+        $instance = new self();
 
-        $ollama->model($model ? $model : env('OLLAMA_MODEL', 'llama3.2:latest'));
-        $ollama->prompt($prompt);
-        if ($system) {
-            $ollama->system($system);
-        }
-        if ($suffix) {
-            $ollama->suffix($suffix);
-        }
-        if ($images) {
-            $ollama->images($images);
-        }
-        if ($format) {
-            $ollama->format($format);
-        }
-        if ($options) {
-            $ollama->options($options);
-        }
-        if ($template) {
-            $ollama->template($template);
-        }
-        if ($stream) {
-            $ollama->stream($stream);
-        }
-        if ($raw) {
-            $ollama->raw($raw);
-        }
-        if ($keep_alive) {
-            $ollama->keep_alive($keep_alive);
-        }
-        if ($context) {
-            $ollama->context($context);
+        foreach ($params as $key => $value) {
+            if (property_exists($instance, $key) && $value !== null) {
+                $method = $key;
+                if (method_exists($instance, $method)) {
+                    $instance->$method($value);
+                } else {
+                    $instance->$key = $value;
+                }
+            }
         }
 
-        return $ollama;
+        return $instance;
     }
 
     // Set the model and return the instance
@@ -142,25 +99,12 @@ class Ollama
     }
 
     // Set the format and return the instance
-    public function format($format)
+    public function format(string $format): self
     {
-
-        if ($format === null || $format === 'json') {
-            $this->format = $format;
-
-            return $this;
+        if ($format !== 'json' && !$this->isValidJson($format)) {
+            throw new \InvalidArgumentException('Invalid JSON format provided.');
         }
-
-        if (is_string($format) && $format !== 'json') {
-
-            $schema = new Schema(collect(json_decode($format))->toArray());
-
-            if ($schema->validate(json_decode($format))) {
-                $this->format = $format;
-
-                return $this;
-            }
-        }
+        $this->format = $format;
 
         return $this;
     }
@@ -213,32 +157,22 @@ class Ollama
         return $this;
     }
 
-    // Example method to demonstrate chaining
-    public function generate()
+    // Modify the generate method to return an array
+    public function generate(): array
     {
-        $data = collect(self::init()
-            ->model($this->model)
-            ->prompt($this->prompt)
-        )->filter(fn ($value) => ! is_null($value))
+        $payload = collect(get_object_vars($this))
+            ->except(['api_url'])
+            ->filter(fn($value) => !is_null($value))
             ->toArray();
 
-        $response = Http::post(config('laravel-ollama.api_url', 'http://localhost:11434').'/api/generate',
-            [
-                'model' => $this->model,
-                'prompt' => $this->prompt,
-                'suffix' => $this->suffix,
-                'images' => $this->images,
-                'format' => $this->format,
-                'options' => $this->options,
-                'template' => $this->template,
-                'stream' => false,
-                'raw' => $this->raw,
-                'keep_alive' => $this->keep_alive,
-                'context' => $this->context,
-            ]
-        );
+        $response = Http::post("{$this->api_url}/api/generate", $payload);
 
-        return $response;
+        return $response->json();
+    }
 
+    private function isValidJson($string): bool
+    {
+        json_decode($string);
+        return json_last_error() === JSON_ERROR_NONE;
     }
 }
