@@ -4,10 +4,11 @@ namespace Dwoodard\LaravelOllama;
 
 use Illuminate\Support\Facades\Http;
 use Swaggest\JsonSchema\Schema;
+use Illuminate\Http\Client\PendingRequest;
 
 class Ollama
 {
-    private string $api_url;
+    protected PendingRequest $http;
 
     public string $model;
 
@@ -33,16 +34,17 @@ class Ollama
 
     public ?string $context = null;
 
-    public function __construct()
+    public function __construct(PendingRequest $http)
     {
+        $this->http = $http;
         $this->api_url = config('laravel-ollama.api_url', 'http://localhost:11434');
         $this->model = env('OLLAMA_MODEL', 'llama3.2:latest');
     }
 
     // Initialize and return a new instance with dynamic parameters
-    public static function init(array $params = []): self
+    public static function init(array $params = [], PendingRequest $http = null): self
     {
-        $instance = new self();
+        $instance = new self($http ?? app('ollama.http'));
 
         foreach ($params as $key => $value) {
             if (property_exists($instance, $key) && $value !== null) {
@@ -161,11 +163,11 @@ class Ollama
     public function generate(): array
     {
         $payload = collect(get_object_vars($this))
-            ->except(['api_url'])
+            ->except(['http']) // Exclude the injected client
             ->filter(fn($value) => !is_null($value))
             ->toArray();
 
-        $response = Http::post("{$this->api_url}/api/generate", $payload);
+        $response = $this->http->post('/api/generate', $payload);
 
         return $response->json();
     }

@@ -4,6 +4,7 @@ namespace Dwoodard\LaravelOllama\Tests;
 
 use Dwoodard\LaravelOllama\Facades\LaravelOllamaFacade as Ollama;
 use Orchestra\Testbench\TestCase; // Added use statement
+use Illuminate\Support\Facades\Http;
 
 class OllamaTest extends TestCase
 {
@@ -21,7 +22,6 @@ class OllamaTest extends TestCase
             'Ollama' => \Dwoodard\LaravelOllama\Facades\LaravelOllamaFacade::class,
 
         ];
-
     }
 
     /** @test
@@ -47,6 +47,7 @@ class OllamaTest extends TestCase
      **/
     public function it_access_the_facade()
     {
+        Http::fake();
         $this->assertInstanceOf(\Dwoodard\LaravelOllama\Ollama::class, Ollama::init());
     }
 
@@ -55,6 +56,7 @@ class OllamaTest extends TestCase
      **/
     public function it_sets_model()
     {
+        Http::fake();
         $model = 'llama3.2:latest';
 
         $ollama = Ollama::init(['model' => $model]); // Passed as array
@@ -66,7 +68,17 @@ class OllamaTest extends TestCase
      **/
     public function it_can_return_a_response()
     {
+        Http::fake([
+            'http://localhost:11434/api/generate' => Http::response([
+                'model' => 'llama3.2:latest',
+                'created_at' => now()->toDateTimeString(),
+                'response' => 'The sky is blue because...',
+                'done' => true,
+            ], 200),
+        ]);
+
         $prompt = 'why is the sky blue?';
+
         $response = Ollama::init([
             'model' => 'llama3.2:latest',
             'prompt' => $prompt
@@ -80,14 +92,32 @@ class OllamaTest extends TestCase
         $this->assertEquals('llama3.2:latest', $response['model']);
     }
 
+
+
     /** @test
-     * it can do a json schema
+     * it validates the JSON response against a schema
      **/
-    public function it_can_json_schema()
+    public function it_validates_json_response_against_schema()
     {
+        Http::fake([
+            'http://localhost:11434/api/generate' => Http::response([
+                'model' => 'llama3.2:latest',
+                'created_at' => now()->toDateTimeString(),
+                'response' => json_encode([
+                    'times' => [
+                        (object)['time' => 'morning', 'sky_color' => 'blue'],
+                        (object)['time' => 'noon', 'sky_color' => 'light blue'],
+                        (object)['time' => 'afternoon', 'sky_color' => 'dark blue'],
+                        (object)['time' => 'evening', 'sky_color' => 'orange'],
+                    ],
+                ]),
+                'done' => true,
+            ], 200),
+        ]);
+
         $response = Ollama::init([
             'model' => 'llama3.2:latest',
-            'prompt' => 'What color is the sky at different times of the day, "morning, noon, afternoon, evening"? Respond using JSON',
+            'prompt' => 'What color is the sky at different times of the day?',
             'format' => 'json',
             'stream' => false,
             'options' => [
@@ -95,20 +125,33 @@ class OllamaTest extends TestCase
             ],
         ])->generate();
 
-        // Debugging: Inspect the response structure
-        // \Log::info('it_can_json_schema response:', $response);
-        // Alternatively, you can use dd($response) to dump and die
-        // dd($response);
+        $responseData = is_string($response['response']) ? json_decode($response['response']) : $response['response'];
 
-        $responseData = is_string($response['response']) ? json_decode($response['response'], true) : $response['response'];
+        // Load the JSON schema from a file or define inline
+        $schemaData = json_decode('{
+        "type": "object",
+        "properties": {
+            "times": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "time": { "type": "string" },
+                        "sky_color": { "type": "string" }
+                    },
+                    "required": ["time", "sky_color"]
+                }
+            }
+        },
+        "required": ["times"]
+    }');
 
-        // Updated assertions to match the actual response structure
-        $this->assertArrayHasKey('times', $responseData);
-        $this->assertIsArray($responseData['times']);
-
-        foreach ($responseData['times'] as $timeEntry) {
-            $this->assertArrayHasKey('time', $timeEntry);
-            $this->assertArrayHasKey('sky_color', $timeEntry);
+        try {
+            $schema = \Swaggest\JsonSchema\Schema::import($schemaData);
+            $schema->in($responseData);  // Validate as an object
+            $this->assertTrue(true, 'The JSON response matches the schema.');
+        } catch (\Swaggest\JsonSchema\Exception\ValidationException $e) {
+            $this->fail('JSON response does not match schema: ' . $e->getMessage());
         }
     }
 }

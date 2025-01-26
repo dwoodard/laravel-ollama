@@ -3,6 +3,7 @@
 namespace Dwoodard\LaravelOllama;
 
 use Illuminate\Support\ServiceProvider;
+use Illuminate\Support\Facades\Http;
 
 class LaravelOllamaServiceProvider extends ServiceProvider
 {
@@ -21,7 +22,7 @@ class LaravelOllamaServiceProvider extends ServiceProvider
 
         if ($this->app->runningInConsole()) {
             $this->publishes([
-                __DIR__.'/../config/config.php' => config_path('laravel-ollama.php'),
+                __DIR__ . '/../config/config.php' => config_path('laravel-ollama.php'),
             ], 'laravel-ollama');
 
             // php artisan vendor:publish --provider="Dwoodard\LaravelOllama\LaravelOllamaServiceProvider" --tag="laravel-ollama"
@@ -52,12 +53,28 @@ class LaravelOllamaServiceProvider extends ServiceProvider
     public function register()
     {
         // Automatically apply the package configuration
-        $this->mergeConfigFrom(__DIR__.'/../config/config.php', 'laravel-ollama');
+        $this->mergeConfigFrom(__DIR__ . '/../config/config.php', 'laravel-ollama');
 
-        // Register the main class to use with the facade
-        $this->app->singleton('Ollama', function () {
-            return new Ollama;
+        $this->app->singleton('ollama.http', function ($app) {
+            return Http::withOptions([
+                'base_uri' => config('laravel-ollama.api_url'),
+                // ...other default options...
+            ])->withToken(config('laravel-ollama.api_token', ''));
         });
 
+        // Remove the old no-argument instantiation
+        // $this->app->singleton('Ollama', function () {
+        //     return new Ollama;
+        // });
+
+        // Replace with an instantiation that injects the HTTP client
+        $this->app->singleton('Ollama', function ($app) {
+            return new Ollama($app->make('ollama.http'));
+        });
+
+        // Optionally unify the class binding
+        $this->app->singleton(Ollama::class, function ($app) {
+            return $app->make('Ollama');
+        });
     }
 }
