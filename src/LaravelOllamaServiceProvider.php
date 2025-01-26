@@ -24,6 +24,8 @@ class LaravelOllamaServiceProvider extends ServiceProvider
                 __DIR__.'/../config/config.php' => config_path('laravel-ollama.php'),
             ], 'laravel-ollama');
 
+            // php artisan vendor:publish --provider="Dwoodard\LaravelOllama\LaravelOllamaServiceProvider" --tag="laravel-ollama"
+
             // Publishing the views.
             /*$this->publishes([
                 __DIR__.'/../resources/views' => resource_path('views/vendor/laravel-ollama'),
@@ -53,8 +55,9 @@ class LaravelOllamaServiceProvider extends ServiceProvider
         $this->mergeConfigFrom(__DIR__.'/../config/config.php', 'laravel-ollama');
 
         // Register the main class to use with the facade
-        $this->app->singleton('laravel-ollama', function () {
-            return new LaravelOllama;
+        $this->app->singleton('Ollama', function () {
+            return new Ollama;
         });
+
     }
 }

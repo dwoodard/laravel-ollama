@@ -1,6 +1,6 @@
 <?php
 
-namespace Dwoodard\LaravelOllama;
+namespace Dwoodard\LaravelOllama\Facades;
 
 use Illuminate\Support\Facades\Facade;
 
@@ -16,6 +16,6 @@ class LaravelOllamaFacade extends Facade
      */
     protected static function getFacadeAccessor()
     {
-        return 'laravel-ollama';
+        return 'Ollama';
     }
 }
