@@ -36,7 +36,7 @@ class Ollama
         $this->api_url = config('laravel-ollama.api_url', 'http://localhost:11434');
         $this->model = env('OLLAMA_MODEL', 'llama3.2:latest');
         $this->system = 'you are a help assistant';
-        $this->prompt = '';
+        $this->prompt = null;
         $this->format = 'json';
         $this->stream = 'false';
         $this->raw = null;
@@ -46,12 +46,7 @@ class Ollama
         $this->template = null;
         $this->images = null;
         $this->suffix = null;
-
-        
     }
-        
-    
-
 
     // Initialize and return a new instance
     public static function init(
@@ -149,23 +144,23 @@ class Ollama
     // Set the format and return the instance
     public function format($format)
     {
-        // 1. format default is 'json'
-        // 2. format can be null
-        // 3. format can be 'json'
-        // 4. format can be json schema which is a json object use Swaggest\JsonSchema\Schema to check
 
-        if ($format) {
-            if ($format === 'json') {
-                $this->format = $format;
-            } else {
-                $schema = Schema::import($format);
-                $this->format = $schema;
-            }
-        } else {
-            $this->format = 'json';
+        if ($format === null || $format === 'json') {
+            $this->format = $format;
+
+            return $this;
         }
 
-        $this->format = $format;
+        if (is_string($format) && $format !== 'json') {
+
+            $schema = new Schema(collect(json_decode($format))->toArray());
+
+            if ($schema->validate(json_decode($format))) {
+                $this->format = $format;
+
+                return $this;
+            }
+        }
 
         return $this;
     }
@@ -221,13 +216,12 @@ class Ollama
     // Example method to demonstrate chaining
     public function generate()
     {
-        $data = collect( self::init()
-                ->model($this->model)
-                ->prompt($this->prompt)
-            )->filter(fn ($value) => ! is_null($value))
+        $data = collect(self::init()
+            ->model($this->model)
+            ->prompt($this->prompt)
+        )->filter(fn ($value) => ! is_null($value))
             ->toArray();
 
-            
         $response = Http::post(config('laravel-ollama.api_url', 'http://localhost:11434').'/api/generate',
             [
                 'model' => $this->model,
@@ -240,14 +234,11 @@ class Ollama
                 'stream' => false,
                 'raw' => $this->raw,
                 'keep_alive' => $this->keep_alive,
-                'context' => $this->context
+                'context' => $this->context,
             ]
         );
 
         return $response;
-
-        
-
 
     }
 }

@@ -67,21 +67,40 @@ class OllamaTest extends TestCase
     public function it_can_return_a_response()
     {
         $prompt = 'why is the sky blue?';
-        $request = Ollama::init(
+        $response = Ollama::init(
             model: 'llama3.2:latest',
             prompt: $prompt
-        )->generate();
+        )->generate(); // Removed $request and ->json()
 
-        $response = $request->json();
-
+        $this->assertIsArray($response);
         $this->assertArrayHasKey('model', $response);
         $this->assertArrayHasKey('created_at', $response);
         $this->assertArrayHasKey('response', $response);
         $this->assertArrayHasKey('done', $response);
 
         $this->assertEquals('llama3.2:latest', $response['model']);
-        
+    }
 
-        
+    /** @test
+     * it can do a json schema
+     **/
+    public function it_can_json_schema()
+    {
+
+        $response = Ollama::init(
+            model: 'llama3.2:latest',
+            prompt: 'What color is the sky at different times of the day, "morning, noon, afternoon, evening"? Respond using JSON',
+            format: 'json',
+            stream: false,
+            options: [
+                'temperature' => 0,
+            ],
+        )->generate();
+
+        $response = json_decode($response->json()['response'], true);
+
+        $this->assertArrayHasKey('sky_colors', $response);
+        $this->assertArrayHasKey('times', $response);
+
     }
 }
