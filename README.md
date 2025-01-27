@@ -20,6 +20,42 @@ composer require dwoodard/laravel-ollama
 // Usage description here
 ```
 
+## Examples
+
+Use the facade to generate a simple response:
+
+```php
+$response = \Dwoodard\LaravelOllama\Facades\LaravelOllamaFacade::init([
+    'model' => 'llama3.2:latest',
+    'prompt' => 'why is the sky blue?',
+])->generate();
+
+echo $response['response']; // "The sky is blue because..."
+```
+
+Set a specific model parameter:
+
+```php
+$ollama = \Dwoodard\LaravelOllama\Facades\LaravelOllamaFacade::init(['model' => 'llama3.2:latest']);
+echo $ollama->model; // "llama3.2:latest"
+```
+
+Handle a JSON schema-based response:
+
+```php
+$personSchema = [
+    "type" => "object",
+    // ...existing code...
+];
+
+$ollama = \Dwoodard\LaravelOllama\Facades\LaravelOllamaFacade::init([
+    'prompt' => 'Create a character profile strictly in JSON format',
+    'format' => json_encode($personSchema),
+])->generate();
+
+// $ollama will be an array with validated JSON fields 
+```
+
 ### Testing
 
 ```bash
