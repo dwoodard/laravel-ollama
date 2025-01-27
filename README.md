@@ -14,10 +14,26 @@ You can install the package via composer:
 composer require dwoodard/laravel-ollama
 ```
 
+```bash
+// add config/laravel-ollama.php
+php artisan vendor:publish --tag=laravel-ollama
+```
+
 ## Usage
 
 ```php
-// Usage description here
+ $ollama = Ollama::init([
+        'prompt' => 'where are you?',
+        'format' => null
+    ])->generate();
+```
+
+```php
+$ollama = Ollama::init([
+            'prompt' => 'tell me a story',
+            'system' => 'you are a grate storyteller',
+            'format' => null,
+        ])->generate();
 ```
 
 ## Examples
@@ -72,12 +88,12 @@ Please see [CONTRIBUTING](CONTRIBUTING.md) for details.
 
 ### Security
 
-If you discover any security related issues, please email dustin.woodard@gmil.com instead of using the issue tracker.
+If you discover any security related issues, please email <dustin.woodard@gmil.com> instead of using the issue tracker.
 
 ## Credits
 
--   [Dustin Woodard](https://github.com/dwoodard)
--   [All Contributors](../../contributors)
+- [Dustin Woodard](https://github.com/dwoodard)
+- [All Contributors](../../contributors)
 
 ## License
 
