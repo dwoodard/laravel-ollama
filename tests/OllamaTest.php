@@ -125,12 +125,15 @@ class OllamaTest extends TestCase
                 "firstName" => ["type" => "string"],
                 "lastName" => ["type" => "string"],
                 "age" => ["type" => "integer", "minimum" => 20],
-                "available" => ["type" => "boolean"],
+                "backstory" => ["type" => "string"],
+
 
             ],
             "required" => [
+                'firstName',
+                'lastName',
                 "age",
-                "available"
+                "backstory"
             ]
         ];
 
@@ -160,7 +163,7 @@ class OllamaTest extends TestCase
         )->generate();
 
         dd(
-            $ollama
+            $ollama['response']
         );
         // $this->assertIsArray($ollama);
         // $this->assertArrayHasKey('firstName', $ollama);
