@@ -87,17 +87,10 @@ class OllamaTest extends TestCase
             'prompt' => $prompt
         ])->generate();
 
-
-
-
         $this->assertArrayHasKey('response', $response);
 
         $this->assertEquals('llama3.2:latest', $response['model']);
     }
-
-
-
-
 
     /** @test
      * it handles null format gracefully
@@ -135,8 +128,6 @@ class OllamaTest extends TestCase
                         'eyeColor' => ['type' => 'string'],
                     ],
                 ]
-
-
             ],
             "required" => [
                 'firstName',
@@ -163,12 +154,88 @@ class OllamaTest extends TestCase
             ]
         )->generate();
 
-
-
         $this->assertIsArray($ollama);
         $this->assertArrayHasKey('firstName', $ollama);
         $this->assertArrayHasKey('lastName', $ollama);
         $this->assertArrayHasKey('age', $ollama);
         $this->assertArrayHasKey('backstory', $ollama);
+    }
+
+    /** @test */
+    public function it_throws_exception_for_invalid_json_schema()
+    {
+        $invalidSchema = '{ "type": "object", "broken": }'; // Deliberate syntax error
+        $this->expectException(\Exception::class);
+        Ollama::init([
+            'format' => $invalidSchema,
+            'prompt' => 'test prompt',
+        ]);
+    }
+
+    /** @test */
+    public function it_handles_missing_required_fields_gracefully()
+    {
+        Http::fake([
+            'http://localhost:11434/api/generate' => Http::response([
+                // Missing 'firstName' for example
+                'lastName' => 'MissingFirstName',
+                'age' => 30,
+            ], 200),
+        ]);
+
+        $response = Ollama::init([
+            'prompt' => 'Create a fictional character with a firstName.',
+            'format' => json_encode([
+                'type' => 'object',
+                'properties' => [
+                    'firstName' => ['type' => 'string'],
+                    'lastName' => ['type' => 'string'],
+                ],
+                'required' => ['firstName'],
+            ]),
+        ])->generate();
+
+        $this->assertArrayHasKey('lastName', $response);
+        $this->assertArrayNotHasKey('firstName', $response); // verify missing
+    }
+
+    /** @test */
+    public function it_handles_large_json_schema()
+    {
+        $largeSchema = [
+            "type" => "object",
+            "properties" => array_fill_keys(
+                range(1, 100),
+                ["type" => "string"]
+            ),
+            "required" => ["1", "50", "100"]
+        ];
+
+        $ollama = Ollama::init([
+            'prompt' => 'Generate detailed information',
+            'format' => json_encode($largeSchema),
+        ])->generate();
+
+        $this->assertIsArray($ollama);
+        $this->assertArrayHasKey('1', $ollama);
+        $this->assertArrayHasKey('50', $ollama);
+        $this->assertArrayHasKey('100', $ollama);
+    }
+
+    /** @test */
+    public function it_handles_invalid_model()
+    {
+        Http::fake([
+            'http://localhost:11434/api/generate' => Http::response([
+                "error" => "model 'unknown-model' not found"
+            ], 400),
+        ]);
+
+        $ollama = Ollama::init([
+            'model' => 'unknown-model',
+            'prompt' => 'Who are you?',
+        ])->generate();
+
+        $this->assertArrayHasKey('error', $ollama);
     }
 }
