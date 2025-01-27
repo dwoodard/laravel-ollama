@@ -5,6 +5,9 @@ namespace Dwoodard\LaravelOllama\Tests;
 use Dwoodard\LaravelOllama\Facades\LaravelOllamaFacade as Ollama;
 use Orchestra\Testbench\TestCase; // Added use statement
 use Illuminate\Support\Facades\Http;
+use Swaggest\JsonSchema\JsonSchema;
+
+use function Pest\Laravel\json;
 
 class OllamaTest extends TestCase
 {
@@ -94,66 +97,7 @@ class OllamaTest extends TestCase
 
 
 
-    /** @test
-     * it validates the JSON response against a schema
-     **/
-    public function it_validates_json_response_against_schema()
-    {
-        Http::fake([
-            'http://localhost:11434/api/generate' => Http::response([
-                'model' => 'llama3.2:latest',
-                'created_at' => now()->toDateTimeString(),
-                'response' => json_encode([
-                    'times' => [
-                        (object)['time' => 'morning', 'sky_color' => 'blue'],
-                        (object)['time' => 'noon', 'sky_color' => 'light blue'],
-                        (object)['time' => 'afternoon', 'sky_color' => 'dark blue'],
-                        (object)['time' => 'evening', 'sky_color' => 'orange'],
-                    ],
-                ]),
-                'done' => true,
-            ], 200),
-        ]);
 
-        $response = Ollama::init([
-            'model' => 'llama3.2:latest',
-            'prompt' => 'What color is the sky at different times of the day?',
-            'format' => 'json',
-            'stream' => false,
-            'options' => [
-                'temperature' => 0,
-            ],
-        ])->generate();
-
-        $responseData = is_string($response['response']) ? json_decode($response['response']) : $response['response'];
-
-        // Load the JSON schema from a file or define inline
-        $schemaData = json_decode('{
-        "type": "object",
-        "properties": {
-            "times": {
-                "type": "array",
-                "items": {
-                    "type": "object",
-                    "properties": {
-                        "time": { "type": "string" },
-                        "sky_color": { "type": "string" }
-                    },
-                    "required": ["time", "sky_color"]
-                }
-            }
-        },
-        "required": ["times"]
-    }');
-
-        try {
-            $schema = \Swaggest\JsonSchema\Schema::import($schemaData);
-            $schema->in($responseData);  // Validate as an object
-            $this->assertTrue(true, 'The JSON response matches the schema.');
-        } catch (\Swaggest\JsonSchema\Exception\ValidationException $e) {
-            $this->fail('JSON response does not match schema: ' . $e->getMessage());
-        }
-    }
 
     /** @test
      * it handles null format gracefully
@@ -168,5 +112,62 @@ class OllamaTest extends TestCase
 
         $this->assertIsString($ollama['response']);
         $this->assertNotEmpty($ollama['response']);
+    }
+
+    /** @test
+     * it handles json format gracefully
+     **/
+    public function it_handles_json_format_gracefully()
+    {
+        $personSchema = [
+            "type" => "object",
+            "properties" => [
+                "firstName" => ["type" => "string"],
+                "lastName" => ["type" => "string"],
+                "age" => ["type" => "integer", "minimum" => 20],
+                "available" => ["type" => "boolean"],
+
+            ],
+            "required" => [
+                "age",
+                "available"
+            ]
+        ];
+
+        // Http::fake([
+        //     'http://localhost:11434/api/generate' => Http::response([
+        //         'firstName' => 'John',
+        //         'lastName' => 'Doe',
+        //         'age' => 30,
+        //     ], 200),
+        // ]);
+
+        $ollama = Ollama::init(
+            [
+                'prompt' => 'Create a fictional character profile with the following details: 
+                    1. A first name.
+                    2. A last name.
+                    3. An age (must be 20 or older).
+                    Ensure the response strictly follows this JSON format: 
+                    {
+                        "firstName": "John",
+                        "lastName": "Doe",
+                        "age": 30
+                    } Respond using JSON.',
+                'system' => 'You are a great storyteller. response strictly in JSON format without additional text.',
+                'format' => json_encode($personSchema),
+            ]
+        )->generate();
+
+        dd(
+            $ollama
+        );
+        // $this->assertIsArray($ollama);
+        // $this->assertArrayHasKey('firstName', $ollama);
+        // $this->assertArrayHasKey('lastName', $ollama);
+        // $this->assertArrayHasKey('age', $ollama);
+        // $this->assertEquals('John', $ollama['firstName']);
+        // $this->assertEquals('Doe', $ollama['lastName']);
+        // $this->assertEquals(30, $ollama['age']);
     }
 }

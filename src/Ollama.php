@@ -21,7 +21,7 @@ class Ollama
 
     public ?array $images = null;
 
-    public ?string $format = 'json';
+    public $format = 'json';
 
     public bool $stream = false;
 
@@ -51,10 +51,26 @@ class Ollama
             if (property_exists($instance, $key)) {
                 $method = $key;
 
-                // Handle the case where format is explicitly set to null
-                if ($key === 'format' && $value === null) {
-                    $instance->format = null;
-                    continue;
+                if ($key === 'format') {
+                    // If value is null, set format to null and continue
+                    if ($value === null) {
+                        $instance->format = null;
+                        continue;
+                    }
+
+                    // If the value is exactly 'json', assign it and continue
+                    if ($value === 'json') {
+                        $instance->format = $value;
+                        continue;
+                    }
+
+                    // If value is valid JSON, decode to an array
+                    if (self::isValidJson($value)) {
+                        $instance->format = json_decode($value, true);
+                        continue;
+                    }
+
+                    throw new \Exception('Invalid JSON format provided.');
                 }
 
                 if (method_exists($instance, $method)) {
@@ -68,109 +84,7 @@ class Ollama
         return $instance;
     }
 
-    // Set the model and return the instance
-    public function model($modelName)
-    {
-        $this->model = $modelName;
 
-        return $this;
-    }
-
-    // Set the system message and return the instance
-    public function system($message)
-    {
-        $this->system = $message;
-
-        return $this;
-    }
-
-    // Set the prompt and return the instance
-    public function prompt($prompt)
-    {
-        $this->prompt = $prompt;
-
-        return $this;
-    }
-
-    // Set the suffix and return the instance
-    public function suffix($suffix)
-    {
-        $this->suffix = $suffix;
-
-        return $this;
-    }
-
-    // Set the images and return the instance
-    public function images($images)
-    {
-        $this->images = $images;
-
-        return $this;
-    }
-
-    // Set the format and return the instance
-    public function format(?string $format): self
-    {
-        // if format is null, return the instance
-        if ($format === null) {
-            return $this;
-        }
-
-        if ($format !== 'json' && !$this->isValidJson($format)) {
-            throw new \InvalidArgumentException('Invalid JSON format provided.');
-        }
-        $this->format = $format;
-
-        return $this;
-    }
-
-    // Set the options and return the instance
-    public function options($options)
-    {
-        $this->options = $options;
-
-        return $this;
-    }
-
-    // Set the template and return the instance
-    public function template($template)
-    {
-        $this->template = $template;
-
-        return $this;
-    }
-
-    // Set the stream and return the instance
-    public function stream($stream)
-    {
-        $this->stream = $stream;
-
-        return $this;
-    }
-
-    // Set the raw and return the instance
-    public function raw($raw)
-    {
-        $this->raw = $raw;
-
-        return $this;
-    }
-
-    // Set the keep_alive and return the instance
-    public function keep_alive($keep_alive)
-    {
-        $this->keep_alive = $keep_alive;
-
-        return $this;
-    }
-
-    // Set the context and return the instance
-    public function context($context)
-    {
-        $this->context = $context;
-
-        return $this;
-    }
 
     // Modify the generate method to return an array
     public function generate(): array
@@ -186,7 +100,7 @@ class Ollama
         return collect($response->json())->toArray();
     }
 
-    private function isValidJson($string): bool
+    private static function isValidJson($string): bool
     {
         json_decode($string);
         return json_last_error() === JSON_ERROR_NONE;
