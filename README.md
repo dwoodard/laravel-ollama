@@ -49,6 +49,52 @@ $response = \Dwoodard\LaravelOllama\Facades\LaravelOllamaFacade::init([
 echo $response['response']; // "The sky is blue because..."
 ```
 
+```php
+$personSchema = [
+        "type" => "object",
+        "properties" => [
+            "firstName" => ["type" => "string"],
+            "lastName" => ["type" => "string"],
+            "age" => ["type" => "integer", "minimum" => 20],
+            "backstory" => ["type" => "string"],
+            'details' => [
+                'type' => 'object',
+                'properties' => [
+                    'height' => ['type' => 'integer'],
+                    'weight' => ['type' => 'integer'],
+                    'hairColor' => ['type' => 'string'],
+                    'eyeColor' => ['type' => 'string'],
+                ],
+            ]
+        ],
+        "required" => [
+            'firstName',
+            'lastName',
+            "age",
+            "backstory"
+        ]
+    ];
+
+
+    $ollama = Ollama::init([
+        'prompt' => 'Create a fictional character profile with the following details: 
+                    1. A first name.
+                    2. A last name.
+                    3. An age (must be 20 or older).
+                    Ensure the response strictly follows this JSON format: 
+                    {
+                        "firstName": "John",
+                        "lastName": "Doe",
+                        "age": 30
+                    } Respond using JSON.',
+        'system' => 'You are a great storyteller. response strictly in JSON format without additional text.',
+        'format' => json_encode($personSchema),
+    ])->generate();
+
+    return $ollama;
+
+```
+
 Set a specific model parameter:
 
 ```php
