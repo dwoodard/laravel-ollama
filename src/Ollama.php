@@ -94,10 +94,20 @@ class Ollama
             ->filter(fn($value) => !is_null($value))
             ->toArray();
 
+        $ollama = $this->http->post('/api/generate', $payload);
 
-        $response = $this->http->post('/api/generate', $payload);
+        $responseArray = $ollama->json(); // Get entire response as array
+        if (!array_key_exists('response', $responseArray)) {
+            return $responseArray;
+        }
 
-        return collect($response->json())->toArray();
+        // If 'response' is text, check if it's valid JSON
+        if (!self::isValidJson($responseArray['response'])) {
+            return $responseArray;
+        }
+
+        // Otherwise decode 'response' into an array
+        return json_decode($responseArray['response'], true);
     }
 
     private static function isValidJson($string): bool

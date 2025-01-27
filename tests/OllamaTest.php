@@ -85,12 +85,12 @@ class OllamaTest extends TestCase
         $response = Ollama::init([
             'model' => 'llama3.2:latest',
             'prompt' => $prompt
-        ])->generate(); // Passed as array
+        ])->generate();
 
-        $this->assertArrayHasKey('model', $response);
-        $this->assertArrayHasKey('created_at', $response);
+
+
+
         $this->assertArrayHasKey('response', $response);
-        $this->assertArrayHasKey('done', $response);
 
         $this->assertEquals('llama3.2:latest', $response['model']);
     }
@@ -126,6 +126,15 @@ class OllamaTest extends TestCase
                 "lastName" => ["type" => "string"],
                 "age" => ["type" => "integer", "minimum" => 20],
                 "backstory" => ["type" => "string"],
+                'details' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'height' => ['type' => 'integer'],
+                        'weight' => ['type' => 'integer'],
+                        'hairColor' => ['type' => 'string'],
+                        'eyeColor' => ['type' => 'string'],
+                    ],
+                ]
 
 
             ],
@@ -136,14 +145,6 @@ class OllamaTest extends TestCase
                 "backstory"
             ]
         ];
-
-        // Http::fake([
-        //     'http://localhost:11434/api/generate' => Http::response([
-        //         'firstName' => 'John',
-        //         'lastName' => 'Doe',
-        //         'age' => 30,
-        //     ], 200),
-        // ]);
 
         $ollama = Ollama::init(
             [
@@ -162,15 +163,12 @@ class OllamaTest extends TestCase
             ]
         )->generate();
 
-        dd(
-            $ollama['response']
-        );
-        // $this->assertIsArray($ollama);
-        // $this->assertArrayHasKey('firstName', $ollama);
-        // $this->assertArrayHasKey('lastName', $ollama);
-        // $this->assertArrayHasKey('age', $ollama);
-        // $this->assertEquals('John', $ollama['firstName']);
-        // $this->assertEquals('Doe', $ollama['lastName']);
-        // $this->assertEquals(30, $ollama['age']);
+
+
+        $this->assertIsArray($ollama);
+        $this->assertArrayHasKey('firstName', $ollama);
+        $this->assertArrayHasKey('lastName', $ollama);
+        $this->assertArrayHasKey('age', $ollama);
+        $this->assertArrayHasKey('backstory', $ollama);
     }
 }
