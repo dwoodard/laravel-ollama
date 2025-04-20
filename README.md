@@ -1,4 +1,4 @@
-# Very short description of the package
+# Laravel Ollama
 
 [![Latest Version on Packagist](https://img.shields.io/packagist/v/dwoodard/laravel-ollama.svg?style=flat-square)](https://packagist.org/packages/dwoodard/laravel-ollama)
 [![Total Downloads](https://img.shields.io/packagist/dt/dwoodard/laravel-ollama.svg?style=flat-square)](https://packagist.org/packages/dwoodard/laravel-ollama)
@@ -31,7 +31,7 @@ php artisan vendor:publish --tag=laravel-ollama
 ```php
 $ollama = Ollama::init([
             'prompt' => 'tell me a story',
-            'system' => 'you are a grate storyteller',
+            'system' => 'you are a great storyteller',
             'format' => null,
         ])->generate();
 ```
